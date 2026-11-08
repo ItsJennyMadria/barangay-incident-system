@@ -1,68 +1,61 @@
 <?php
-session_start();
+require_once 'includes/auth_check.php';
+checkAccess('Admin');
 require_once 'config/db.php';
-
-$officerStmt = $pdo->query("
-    SELECT o.Officer_ID, o.Officer_Name 
-    FROM OFFICER o 
-    LEFT JOIN USERS u ON o.Officer_ID = u.Officer_ID 
-    WHERE u.User_ID IS NULL
-");
-$available_officers = $officerStmt->fetchAll();
-
-$message = '';
-
+$errors = [];
+function unlinked($pdo) {
+    return $pdo->query("SELECT o.Officer_ID, CONCAT(o.Officer_ID,' - ',o.Officer_Name) AS Label FROM OFFICER o
+        LEFT JOIN USERS u ON u.Officer_ID=o.Officer_ID WHERE u.User_ID IS NULL ORDER BY o.Officer_ID")->fetchAll();
+}
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
-    $username = trim($_POST['username']);
-    $password = $_POST['password'];
-    $role = $_POST['role'];
-    $officer_id = $_POST['officer_id'];
-
-    if (!empty($username) && !empty($password) && !empty($role) && !empty($officer_id)) {
-        $password_hash = password_hash($password, PASSWORD_BCRYPT);
-
+    csrf_check();
+    $oid = $_POST['officer_id'] ?? ''; $uname = trim($_POST['username'] ?? ''); $pw = $_POST['password'] ?? '';
+    $role = $_POST['role'] ?? ''; $oname = trim($_POST['officer_name'] ?? '');
+    if (!preg_match('/^[A-Za-z0-9_.]{3,30}$/', $uname)) $errors[] = 'Username: 3-30 letters, numbers, dot or underscore.';
+    if (strlen($pw) < 8) $errors[] = 'Password must be at least 8 characters.';
+    if (!in_array($role, ['Admin', 'Officer'], true)) $errors[] = 'Choose a valid role.';
+    if ($oid === 'new' && (mb_strlen($oname) < 2 || mb_strlen($oname) > 100)) $errors[] = 'Enter the new officer\'s full name.';
+    if ($oid !== 'new' && !in_array($oid, array_column(unlinked($pdo), 'Officer_ID'), true)) $errors[] = 'Choose an officer profile without an account.';
+    if (!$errors) {
         try {
-            $stmt = $pdo->prepare("INSERT INTO USERS (Username, Password_Hash, Role, Officer_ID) VALUES (?, ?, ?, ?)");
-            $stmt->execute([$username, $password_hash, $role, $officer_id]);
-            $message = "<p style='color:green;'>Registration successful! <a href='login.php'>Login here</a></p>";
+            $pdo->beginTransaction();
+            if ($oid === 'new') {
+                $n = (int)$pdo->query("SELECT COALESCE(MAX(CAST(SUBSTRING(Officer_ID,3) AS UNSIGNED)),0) FROM OFFICER")->fetchColumn() + 1;
+                $oid = sprintf('O-%02d', $n);
+                $pdo->prepare("INSERT INTO OFFICER VALUES (?,?)")->execute([$oid, $oname]);
+            }
+            $pdo->prepare("INSERT INTO USERS (Username,Password_Hash,Role,Officer_ID) VALUES (?,?,?,?)")
+                ->execute([$uname, password_hash($pw, PASSWORD_BCRYPT), $role, $oid]);
+            $pdo->commit();
+            flash("Account '$uname' created as $role.");
+            header('Location: admin_dashboard.php'); exit();
         } catch (PDOException $e) {
-            $message = "<p style='color:red;'>Error: Username or Officer profile already registered.</p>";
+            if ($pdo->inTransaction()) $pdo->rollBack();
+            $errors[] = $e->getCode() === '23000' ? 'That username is already taken.' : 'Could not create the account.';
         }
-    } else {
-        $message = "<p style='color:red;'>Please fill all fields.</p>";
     }
 }
+page_head('Register Account', true);
 ?>
-
-<!DOCTYPE html>
-<html>
-<head><title>Register Account</title></head>
-<body>
-    <h2>Barangay System Account Registration</h2>
-    <?= $message ?>
-    <form method="POST" action="register.php">
-        <label>Select Officer Profile:</label><br>
-        <select name="officer_id" required>
-            <option value="">-- Choose Officer --</option>
-            <?php foreach ($available_officers as $officer): ?>
-                <option value="<?= $officer['Officer_ID'] ?>"><?= $officer['Officer_ID'] ?> - <?= $officer['Officer_Name'] ?></option>
-            <?php endforeach; ?>
-        </select><br><br>
-
-        <label>Username:</label><br>
-        <input type="text" name="username" required><br><br>
-
-        <label>Password:</label><br>
-        <input type="password" name="password" required><br><br>
-
-        <label>Role:</label><br>
-        <select name="role" required>
-            <option value="Officer">Officer</option>
-            <option value="Admin">Admin</option>
-        </select><br><br>
-
-        <button type="submit">Create Account</button>
-    </form>
-    <p>Already registered? <a href="login.php">Login here</a></p>
-</body>
-</html>
+<div class="card" style="max-width:520px;margin:auto">
+  <h1>Register New Account</h1>
+  <p class="muted">Create a login and assign its role. Only admins can do this.</p>
+  <?php if ($errors): ?><div class="alert err"><ul><?php foreach ($errors as $e) echo '<li>' . h($e) . '</li>'; ?></ul></div><?php endif; ?>
+  <form method="POST">
+    <?= csrf_field() ?>
+    <label>Officer profile</label>
+    <select name="officer_id" required>
+      <option value="new">+ New officer (type name below)</option>
+      <?= opts(unlinked($pdo), 'Officer_ID', 'Label', $_POST['officer_id'] ?? null) ?>
+    </select>
+    <label>New officer's full name (only if "New officer")</label>
+    <input name="officer_name" maxlength="100" value="<?= h($_POST['officer_name'] ?? '') ?>">
+    <label>Username</label><input name="username" required value="<?= h($_POST['username'] ?? '') ?>">
+    <label>Password (min. 8 characters)</label><input type="password" name="password" required autocomplete="new-password">
+    <label>Role</label>
+    <select name="role"><option>Officer</option><option>Admin</option></select>
+    <button class="btn full">Create Account</button>
+  </form>
+  <p><a href="admin_dashboard.php">← Back to dashboard</a></p>
+</div>
+<?php page_foot(); ?>
