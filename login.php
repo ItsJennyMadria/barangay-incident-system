@@ -13,9 +13,11 @@ if ($user && password_verify($_POST['password'] ?? '', $user['Password_Hash'])) 
     $_SESSION['role'] = $user['Role'];
     $_SESSION['officer_id'] = $user['Officer_ID'];
     $_SESSION['officer_name'] = $user['Officer_Name'];
+    log_activity($pdo, 'LOGIN', 'Logged in as ' . $user['Role']);
     header('Location: ' . ($user['Role'] === 'Admin' ? 'admin_dashboard.php' : 'officer_dashboard.php'));
     exit();
 }
+log_activity($pdo, 'LOGIN_FAILED', 'Attempted username: ' . trim($_POST['username'] ?? ''));
 flash('Invalid username or password.', 'err');
 header('Location: index.php');
 exit();

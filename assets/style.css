@@ -20,3 +20,5 @@ input:focus,select:focus{outline:2px solid #2a7f8e;border-color:#2a7f8e}
 table{width:100%;border-collapse:collapse;font-size:.9rem}th{background:#12355b;color:#fff;text-align:left;padding:10px}
 td{padding:10px;border-bottom:1px solid #e2e8f0;vertical-align:top}form.inline{display:flex;gap:6px;flex-wrap:wrap;margin:0}
 form.inline select,form.inline input{width:auto;padding:6px}details{margin-top:6px}summary{cursor:pointer;color:#2a7f8e}
+.tabs{display:flex;gap:8px;margin-bottom:12px}.tabs a{padding:6px 14px;border-radius:99px;background:#e2e8f0;color:#12355b;text-decoration:none;font-weight:600;font-size:.85rem}.tabs a.on{background:#12355b;color:#fff}tr.new td{background:#fffbeb}
+.nav{display:flex;gap:16px}.nav a{color:#fff;text-decoration:none;font-weight:600}.nav a:hover{color:#f2a541}.perm{display:flex;gap:8px;align-items:flex-start;margin:6px 0}.perm input{width:auto;margin-top:4px}.perm b{display:block}.perm span{font-size:.85rem;color:#475569}.ucard{border:1px solid #e2e8f0;border-radius:10px;padding:14px;margin-bottom:14px}

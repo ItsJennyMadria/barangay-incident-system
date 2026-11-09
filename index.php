@@ -30,8 +30,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
                 VALUES (?,?,?,?,?,NULL,(SELECT Status_ID FROM INCIDENT_STATUS WHERE Status_Name='Open'))")
                 ->execute([$ref, $date, $loc, $type, $rid]);
             $pdo->commit();
+            log_activity($pdo, 'REPORT_SUBMITTED', "Public report from resident $rid", $ref, null);
             flash("Report submitted! Your reference number is $ref. Keep it to track your report.");
-            header('Location: index.php'); exit();
+            header('Location: index.php?track=' . $ref); exit();
         } catch (PDOException $e) {
             if ($pdo->inTransaction()) $pdo->rollBack();
             $errors[] = 'We could not save your report. Please try again.';
@@ -40,7 +41,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 $track = null;
 if (!empty($_GET['track'])) {
-    $st = $pdo->prepare("SELECT i.Incident_Ref, i.Incident_Date, t.Type_Name, s.Status_Name, o.Officer_Name
+    $st = $pdo->prepare("SELECT i.Incident_Ref, i.Incident_Date, t.Type_Name, s.Status_Name, o.Officer_Name,
+        (SELECT MAX(Follow_up_Date) FROM INCIDENT_FOLLOWUP f WHERE f.Incident_Ref=i.Incident_Ref) AS Last_Update
         FROM INCIDENT i JOIN INCIDENT_TYPE t ON i.Type_ID=t.Type_ID JOIN INCIDENT_STATUS s ON i.Status_ID=s.Status_ID
         LEFT JOIN OFFICER o ON i.Officer_ID=o.Officer_ID WHERE i.Incident_Ref = ?");
     $st->execute([strtoupper(trim($_GET['track']))]);
@@ -90,7 +92,8 @@ show_flash();
       <?php if ($track): ?>
         <p><b><?= h($track['Incident_Ref']) ?></b> · <?= h($track['Type_Name']) ?> · <?= h($track['Incident_Date']) ?><br>
         Status: <span class="pill"><?= h($track['Status_Name']) ?></span><br>
-        Handled by: <?= h($track['Officer_Name'] ?? 'Awaiting assignment') ?></p>
+        Handled by: <?= h($track['Officer_Name'] ?? 'Awaiting assignment') ?><br>
+        Last update: <?= h($track['Last_Update'] ?? 'No updates yet') ?></p>
       <?php elseif ($track === false): ?><p class="muted">No report found with that reference.</p><?php endif; ?>
     </div>
   </aside>
