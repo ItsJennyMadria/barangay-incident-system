@@ -29,11 +29,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 $view = in_array($_GET['view'] ?? '', $views, true) ? $_GET['view'] : 'all';
 $where = ['unassigned' => 'WHERE i.Officer_ID IS NULL', 'pending' => "WHERE s.Status_Name<>'Closed'", 'closed' => "WHERE s.Status_Name='Closed'"][$view] ?? '';
+$svcMap = [];
+foreach ($pdo->query("SELECT Officer_ID, Service_ID FROM OFFICER_SERVICE") as $r) $svcMap[$r['Officer_ID']][] = (int)$r['Service_ID'];
+function officer_opts($officers, $svcMap, $svc, $sel) {
+    $rec = $oth = '';
+    foreach ($officers as $o) {
+        $m = in_array((int)$svc, $svcMap[$o['Officer_ID']] ?? [], true);
+        $x = '<option value="' . h($o['Officer_ID']) . '"' . ($o['Officer_ID'] === $sel ? ' selected' : '') . ($m ? ' data-m="1"' : '') . '>' . h($o['Officer_Name']) . '</option>';
+        if ($m) $rec .= $x; else $oth .= $x;
+    }
+    return '<option value="">-- Unassigned --</option>' . ($rec ? '<optgroup label="✔ Recommended (handles this service)">' . $rec . '</optgroup>' : '') . ($oth ? '<optgroup label="Other officers">' . $oth . '</optgroup>' : '');
+}
 $stat = fn($sql) => $pdo->query($sql)->fetchColumn();
 $officers = $pdo->query("SELECT o.Officer_ID, o.Officer_Name FROM OFFICER o LEFT JOIN USERS u ON u.Officer_ID=o.Officer_ID
     WHERE u.Role IS NULL OR u.Role<>'Admin' ORDER BY o.Officer_ID")->fetchAll();
-$incidents = $pdo->query("SELECT i.*, r.Resident_Name, r.Contact, t.Type_Name, s.Status_Name, o.Officer_Name FROM INCIDENT i
-    JOIN RESIDENT r ON i.Resident_ID=r.Resident_ID JOIN INCIDENT_TYPE t ON i.Type_ID=t.Type_ID
+$incidents = $pdo->query("SELECT i.*, r.Resident_Name, r.Contact, t.Type_Name, t.Service_ID, sv.Service_Name, s.Status_Name, o.Officer_Name FROM INCIDENT i
+    JOIN RESIDENT r ON i.Resident_ID=r.Resident_ID JOIN INCIDENT_TYPE t ON i.Type_ID=t.Type_ID JOIN SERVICE sv ON t.Service_ID=sv.Service_ID
     JOIN INCIDENT_STATUS s ON i.Status_ID=s.Status_ID LEFT JOIN OFFICER o ON i.Officer_ID=o.Officer_ID $where
     ORDER BY (i.Officer_ID IS NULL) DESC, i.Incident_Date DESC, i.Incident_Ref DESC")->fetchAll();
 page_head('Admin Dashboard', true);
@@ -50,16 +61,17 @@ show_flash();
 <div class="card">
   <div class="tabs"><?php foreach (['all' => 'All', 'unassigned' => 'Unassigned', 'pending' => 'Pending', 'closed' => 'Closed'] as $k => $l) echo '<a class="' . ($view === $k ? 'on' : '') . '" href="?view=' . $k . '">' . $l . '</a>'; ?></div>
   <div class="tbl"><table>
-    <tr><th>Ref</th><th>Date</th><th>Type</th><th>Location</th><th>Complainant</th><th>Status</th><th>Assigned officer</th><th>History</th></tr>
+    <tr><th>Ref</th><th>When</th><th>Type &amp; service</th><th>Location</th><th>Complainant</th><th>Status</th><th>Assigned officer</th><th>History</th></tr>
     <?php foreach ($incidents as $i): $onDuty = $i['Officer_ID'] !== null && $i['Status_Name'] !== 'Closed'; ?>
     <tr class="<?= $i['Officer_ID'] === null ? 'new' : '' ?>">
       <td><b><?= h($i['Incident_Ref']) ?></b><?= $i['Officer_ID'] === null ? ' <span class="pill">NEW</span>' : '' ?></td>
-      <td><?= h($i['Incident_Date']) ?></td><td><?= h($i['Type_Name']) ?></td><td><?= h($i['Location']) ?></td>
+      <td><?= h($i['Incident_Date']) ?><br><span class="muted"><?= h(substr($i['Incident_Time'] ?? '', 0, 5)) ?></span></td>
+      <td><b><?= h($i['Type_Name']) ?></b><?= $i['Other_Specify'] ? ': ' . h($i['Other_Specify']) : '' ?><br><span class="muted"><?= h($i['Service_Name']) ?></span><?php if ($i['Description']): ?><details><summary>Details</summary><?= h($i['Description']) ?></details><?php endif; ?></td><td><?= h($i['Location']) ?></td>
       <td><?= h($i['Resident_Name']) ?><br><span class="muted"><?= h($i['Contact']) ?></span></td>
       <td><?= h($i['Status_Name']) ?></td>
-      <td><form method="POST" class="inline" data-warn="<?= $onDuty ? 1 : 0 ?>" onsubmit="return chk(this)"><?= csrf_field() ?>
+      <td><form method="POST" class="inline" data-warn="<?= $onDuty ? 1 : 0 ?>" data-service="<?= h($i['Service_Name']) ?>" onsubmit="return chk(this)"><?= csrf_field() ?>
         <input type="hidden" name="ref" value="<?= h($i['Incident_Ref']) ?>"><input type="hidden" name="view" value="<?= h($view) ?>"><input type="hidden" name="ack" value="">
-        <select name="officer_id" data-orig="<?= h($i['Officer_ID']) ?>"><?= opts($officers, 'Officer_ID', 'Officer_Name', $i['Officer_ID'], '-- Unassigned --') ?></select>
+        <select name="officer_id" data-orig="<?= h($i['Officer_ID']) ?>"><?= officer_opts($officers, $svcMap, $i['Service_ID'], $i['Officer_ID']) ?></select>
         <button class="btn sm">Save</button></form></td>
       <td><a href="history.php?incident=<?= h($i['Incident_Ref']) ?>">View</a></td>
     </tr>
@@ -71,10 +83,12 @@ show_flash();
 const WARN = <?= json_encode(WARN) ?>;
 function chk(f) {
   var s = f.officer_id;
-  if (f.dataset.warn === '1' && s.value !== s.dataset.orig) {
+  if (s.value === s.dataset.orig) return true;
+  if (f.dataset.warn === '1') {
     if (!confirm('⚠️ WARNING\n\n' + WARN + '\n\nPress OK only if you have coordinated with the officer.')) return false;
     f.ack.value = '1';
   }
+  if (s.value !== '' && s.options[s.selectedIndex].dataset.m !== '1' && !confirm('This officer is not listed under "' + f.dataset.service + '". Assign anyway?')) return false;
   return true;
 }
 </script>

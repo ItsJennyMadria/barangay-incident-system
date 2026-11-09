@@ -1,4 +1,5 @@
 <?php
+date_default_timezone_set('Asia/Manila');
 if (session_status() === PHP_SESSION_NONE) {
     session_set_cookie_params(['httponly' => true, 'samesite' => 'Lax']);
     session_start();
@@ -22,7 +23,7 @@ function show_flash() {
     }
 }
 function checkAccess($role) {
-    if (empty($_SESSION['user_id'])) { header('Location: index.php'); exit(); }
+    if (empty($_SESSION['user_id'])) { header('Location: login.php'); exit(); }
     if ($_SESSION['role'] !== $role) {
         http_response_code(403);
         exit('<h2>403 – Access denied</h2><p>Your role cannot open this page. <a href="logout.php">Logout</a></p>');

@@ -37,7 +37,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 }
 $cases = []; $notes = [];
 if (can($pdo, 'VIEW_ASSIGNED')) {
-    $st = $pdo->prepare("SELECT i.Incident_Ref, i.Incident_Date, i.Location, i.Status_ID, r.Resident_Name, r.Contact, t.Type_Name
+    $st = $pdo->prepare("SELECT i.Incident_Ref, i.Incident_Date, i.Incident_Time, i.Description, i.Other_Specify, i.Location, i.Status_ID, r.Resident_Name, r.Contact, t.Type_Name
         FROM INCIDENT i JOIN RESIDENT r ON i.Resident_ID=r.Resident_ID JOIN INCIDENT_TYPE t ON i.Type_ID=t.Type_ID
         WHERE i.Officer_ID=? ORDER BY i.Incident_Date DESC");
     $st->execute([$me]); $cases = $st->fetchAll();
@@ -67,7 +67,7 @@ show_flash();
   <tr><th>Ref</th><th>Date</th><th>Type</th><th>Location</th><th>Complainant</th><th>Status</th><th>Follow-ups</th></tr>
   <?php foreach ($cases as $c): ?>
   <tr>
-    <td><b><?= h($c['Incident_Ref']) ?></b></td><td><?= h($c['Incident_Date']) ?></td><td><?= h($c['Type_Name']) ?></td>
+    <td><b><?= h($c['Incident_Ref']) ?></b></td><td><?= h($c['Incident_Date']) ?><br><span class="muted"><?= h(substr($c['Incident_Time'] ?? '', 0, 5)) ?></span></td><td><b><?= h($c['Type_Name']) ?></b><?= $c['Other_Specify'] ? ': ' . h($c['Other_Specify']) : '' ?><?php if ($c['Description']): ?><details><summary>Details</summary><?= h($c['Description']) ?></details><?php endif; ?></td>
     <td><?= h($c['Location']) ?></td><td><?= h($c['Resident_Name']) ?><br><span class="muted"><?= h($c['Contact']) ?></span></td>
     <td><?php if ($canS): ?><form method="POST" class="inline"><?= csrf_field() ?><input type="hidden" name="action" value="status"><input type="hidden" name="ref" value="<?= h($c['Incident_Ref']) ?>">
       <select name="status_id"><?= opts($statuses, 'Status_ID', 'Status_Name', $c['Status_ID']) ?></select><button class="btn sm">Save</button></form>

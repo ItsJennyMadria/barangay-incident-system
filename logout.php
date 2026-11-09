@@ -4,5 +4,5 @@ require_once 'config/db.php';
 if (!empty($_SESSION['user_id'])) log_activity($pdo, 'LOGOUT', 'Logged out');
 $_SESSION = [];
 session_destroy();
-header("Location: index.php");
+header("Location: login.php?out=1");
 exit();

@@ -3,6 +3,7 @@ require_once 'includes/auth_check.php';
 checkAccess('Admin');
 require_once 'config/db.php';
 $perms = $pdo->query("SELECT * FROM PERMISSION ORDER BY Permission_ID")->fetchAll();
+$services = $pdo->query("SELECT * FROM SERVICE ORDER BY Service_ID")->fetchAll();
 $codes = array_column($perms, 'Permission_Code', 'Permission_ID');
 function grants($pdo, $uid) {
     $s = $pdo->prepare("SELECT Permission_ID FROM USER_PERMISSION WHERE User_ID=?"); $s->execute([$uid]);
@@ -12,7 +13,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     csrf_check();
     $uid = (int)($_POST['user_id'] ?? 0); $role = $_POST['role'] ?? '';
     $chosen = array_values(array_intersect(array_map('intval', (array)($_POST['perm'] ?? [])), array_keys($codes)));
-    $u = $pdo->prepare("SELECT Username, Role FROM USERS WHERE User_ID=?"); $u->execute([$uid]); $target = $u->fetch();
+    $u = $pdo->prepare("SELECT Username, Role, Officer_ID FROM USERS WHERE User_ID=?"); $u->execute([$uid]); $target = $u->fetch();
     if (!$target || !in_array($role, ['Admin', 'Officer'], true)) flash('Invalid request.', 'err');
     elseif ($uid === (int)$_SESSION['user_id']) flash('You cannot change your own access.', 'err');
     else {
@@ -22,9 +23,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             $pdo->prepare("DELETE FROM USER_PERMISSION WHERE User_ID=?")->execute([$uid]);
             $ins = $pdo->prepare("INSERT INTO USER_PERMISSION (User_ID,Permission_ID,Granted_By) VALUES (?,?,?)");
             foreach ($chosen as $pid) $ins->execute([$uid, $pid, $_SESSION['user_id']]);
+            $svcNow = array_values(array_intersect(array_map('intval', (array)($_POST['svc'] ?? [])), array_map('intval', array_column($services, 'Service_ID'))));
+            $pdo->prepare("DELETE FROM OFFICER_SERVICE WHERE Officer_ID=?")->execute([$target['Officer_ID']]);
+            $si = $pdo->prepare("INSERT INTO OFFICER_SERVICE (Officer_ID,Service_ID) VALUES (?,?)");
+            foreach ($svcNow as $sid) $si->execute([$target['Officer_ID'], $sid]);
             $pdo->prepare("UPDATE USERS SET Role=? WHERE User_ID=?")->execute([$role, $uid]);
             $names = fn($ids) => $ids ? implode(', ', array_map(fn($i) => $codes[$i], $ids)) : 'none';
-            log_activity($pdo, 'ACCESS_CHANGED', "Target {$target['Username']} (ID $uid). Role {$target['Role']} -> $role. Access: " . $names($before) . ' -> ' . $names($chosen));
+            log_activity($pdo, 'ACCESS_CHANGED', "Target {$target['Username']} (ID $uid). Role {$target['Role']} -> $role. Access: " . $names($before) . ' -> ' . $names($chosen) . '. Services: ' . ($svcNow ? implode(',', $svcNow) : 'none'));
             $pdo->commit();
             flash("Confirmed: access for {$target['Username']} was updated. Role: $role. Access now: " . $names($chosen) . '. This change is recorded in the history log.');
         } catch (PDOException $e) { if ($pdo->inTransaction()) $pdo->rollBack(); flash('Could not save access changes.', 'err'); }
@@ -53,6 +58,12 @@ show_flash();
     <?php foreach ($perms as $p): ?>
       <label class="perm"><input type="checkbox" name="perm[]" value="<?= (int)$p['Permission_ID'] ?>" <?= in_array((int)$p['Permission_ID'], $mine, true) ? 'checked' : '' ?> <?= $self ? 'disabled' : '' ?>>
       <span><b><?= h($p['Permission_Name']) ?></b><?= h($p['Description']) ?></span></label>
+    <?php endforeach; ?>
+    <label>Services this officer handles <span class="muted">(used to recommend the right officer for each incident)</span></label>
+    <?php $mySvc = $pdo->prepare("SELECT Service_ID FROM OFFICER_SERVICE WHERE Officer_ID=?"); $mySvc->execute([$u['Officer_ID']]); $mySvc = array_map('intval', $mySvc->fetchAll(PDO::FETCH_COLUMN));
+    foreach ($services as $s): ?>
+      <label class="perm"><input type="checkbox" name="svc[]" value="<?= (int)$s['Service_ID'] ?>" <?= in_array((int)$s['Service_ID'], $mySvc, true) ? 'checked' : '' ?> <?= $self ? 'disabled' : '' ?>>
+      <span><b><?= h($s['Service_Name']) ?></b><?= h($s['Description']) ?></span></label>
     <?php endforeach; ?>
     <?php if (!$self): ?><button class="btn sm" style="margin-top:8px">Save access</button><?php endif; ?>
   </form>

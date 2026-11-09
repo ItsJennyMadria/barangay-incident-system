@@ -30,7 +30,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
             if ($role === 'Officer') $pdo->prepare("INSERT INTO USER_PERMISSION (User_ID,Permission_ID,Granted_By) SELECT ?,Permission_ID,? FROM PERMISSION WHERE Permission_Code IN ('VIEW_ASSIGNED','UPDATE_STATUS','ADD_FOLLOWUP')")->execute([$newUid, $_SESSION['user_id']]);
             log_activity($pdo, 'ACCOUNT_CREATED', "Account '$uname' ($role) for officer $oid; default access granted");
             $pdo->commit();
-            flash("Account '$uname' created as $role.");
+            flash("Account '$uname' created as $role. Next, tick the services this officer handles in Access Control.");
             header('Location: admin_dashboard.php'); exit();
         } catch (PDOException $e) {
             if ($pdo->inTransaction()) $pdo->rollBack();
