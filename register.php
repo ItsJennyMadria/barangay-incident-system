@@ -61,4 +61,4 @@ page_head('Register Account', true);
   </form>
   <p><a href="admin_dashboard.php">← Back to dashboard</a></p>
 </div>
-<?php page_foot(); ?>
+<?php page_foot(); ?
