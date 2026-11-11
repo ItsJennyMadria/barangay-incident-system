@@ -143,7 +143,7 @@ summary:hover{color:var(--primary-dark)}
 .hot .nm{font-weight:700;margin:6px 0;color:var(--ink)}
 .hot a.tel{display:inline-flex;align-items:center;gap:6px;background:#eff6ff;color:var(--primary-dark);border:1px solid #dbeafe;border-radius:999px;padding:6px 14px;margin:4px 6px 4px 0;
   font-weight:700;text-decoration:none;transition:background var(--t),color var(--t),transform var(--t),box-shadow var(--t)}
-.hot a.tel::before{content:"📞";font-size:.85em}
+.hot a.tel::before{content:"";font-size:.85em}
 .hot a.tel:hover{background:var(--primary);color:#fff;transform:translateY(-2px);box-shadow:0 8px 16px -6px rgba(37,99,235,.55)}
 
 /* Hints, steps, login */

@@ -1,5 +1,4 @@
 <?php
-// Edit this list to update the hotlines shown on the public page. Verify numbers against the official posters.
 return [
  'National' => [['National Emergency Hotline', ['911']]],
  'Police' => [['Philippine National Police – Manolo Fortich', ['0916-313-7327', '0927-680-2115']]],

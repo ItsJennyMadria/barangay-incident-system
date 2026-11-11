@@ -63,8 +63,8 @@ page_head('Report an Incident');
 show_flash();
 ?>
 <div class="sos">
-  <div><h2>🚨 Emergency? Call first, report later.</h2><p>If someone is in danger, fire, or needs medical help, call right away.</p></div>
-  <div><a class="qbtn" href="tel:911">📞 911</a><a class="qbtn" href="tel:09163137327">🚓 Police</a><a class="qbtn" href="tel:09352307289">🔥 Fire (BFP)</a><a class="qbtn" href="tel:09158139494">🚑 Rescue Team</a></div>
+  <div><h2> Emergency? Call first, report later.</h2><p>If someone is in danger, fire, or needs medical help, call right away.</p></div>
+  <div><a class="qbtn" href="tel:911"> 911</a><a class="qbtn" href="tel:09163137327"> Police</a><a class="qbtn" href="tel:09352307289">Fire (BFP)</a><a class="qbtn" href="tel:09158139494">Rescue Team</a></div>
 </div>
 <div class="grid">
   <section class="card">
@@ -85,7 +85,7 @@ show_flash();
         <?php endforeach; ?></optgroup><?php endforeach; ?>
       </select>
       <div id="hint" class="hint" hidden></div>
-      <div id="urgent" class="alert err" style="margin-top:10px" hidden>🚨 <b>This may be an emergency.</b> If anyone is in danger right now, call <a href="tel:911"><b>911</b></a> first, then submit this report.</div>
+      <div id="urgent" class="alert err" style="margin-top:10px" hidden><b>This may be an emergency.</b> If anyone is in danger right now, call <a href="tel:911"><b>911</b></a> first, then submit this report.</div>
       <div id="otherBox" hidden><label>What kind of problem is this?</label><input name="other_specify" id="spec" maxlength="100" placeholder="e.g. stray dogs, broken street light" value="<?= h($_POST['other_specify'] ?? '') ?>"></div>
       <div class="row">
         <div><label>Date it happened</label><input type="date" id="date" name="date" max="<?= date('Y-m-d') ?>" required value="<?= h($_POST['date'] ?? date('Y-m-d')) ?>"></div>
@@ -101,7 +101,7 @@ show_flash();
   </section>
   <aside>
     <div class="card">
-      <h2>🔎 Track a Report</h2>
+      <h2>Track a Report</h2>
       <p class="muted">Enter the reference number you received.</p>
       <form method="GET" class="inline"><input name="track" placeholder="INC-001" required value="<?= h($_GET['track'] ?? '') ?>"><button class="btn sm">Check</button></form>
       <?php if ($track): ?>
@@ -118,7 +118,7 @@ show_flash();
   </aside>
 </div>
 <div class="card">
-  <h2>📞 Emergency Hotlines</h2>
+  <h2> Emergency Hotlines</h2>
   <p class="muted">Tap a number on your phone to call. Please confirm numbers with the barangay office if a call does not connect.</p>
   <div class="hot-grid">
     <?php foreach ($hotlines as $grp => $items): foreach ($items as [$nm, $nums]): ?>

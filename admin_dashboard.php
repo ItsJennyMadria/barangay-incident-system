@@ -85,7 +85,7 @@ function chk(f) {
   var s = f.officer_id;
   if (s.value === s.dataset.orig) return true;
   if (f.dataset.warn === '1') {
-    if (!confirm('⚠️ WARNING\n\n' + WARN + '\n\nPress OK only if you have coordinated with the officer.')) return false;
+    if (!confirm('WARNING\n\n' + WARN + '\n\nPress OK only if you have coordinated with the officer.')) return false;
     f.ack.value = '1';
   }
   if (s.value !== '' && s.options[s.selectedIndex].dataset.m !== '1' && !confirm('This officer is not listed under "' + f.dataset.service + '". Assign anyway?')) return false;

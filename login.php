@@ -25,7 +25,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 page_head('Staff Login');
 ?>
 <div class="card login">
-  <h1>🔐 Staff Portal</h1>
+  <h1>Staff Portal</h1>
   <p class="muted">For barangay administrators and officers only.</p>
   <?php if ($error): ?><div class="alert err"><?= h($error) ?></div><?php endif; ?>
   <?php if (isset($_GET['out']) && !$error): ?><div class="alert ok">You have been logged out.</div><?php endif; ?>
